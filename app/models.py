@@ -12,3 +12,9 @@ class VersionResponse(BaseModel):
     #     if isinstance(value, datetime):
     #         return value.strftime("%Y-%m-%d %H:%M:%S")
     #     return value
+    
+
+class Transcription(BaseModel):
+    name: str
+    text: str
+    timestamp: datetime
