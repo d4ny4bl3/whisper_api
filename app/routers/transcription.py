@@ -3,6 +3,7 @@ from models import Transcription
 from utils import get_timestamp
 import whisper
 import os
+import subprocess
 
 
 router = APIRouter()
@@ -16,13 +17,43 @@ except Exception as e:
     model = None
     model_status = "not loaded"
     print(f"Error: {e}")
-    
-# Absolutní cesta ke složce app/routers
-current_dir = os.path.dirname(os.path.abspath(__file__))
-target_dir = current_dir
+
+try:
+    result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, check=True)
+    print("FFmpeg is working.")
+except Exception as e:
+    print("FFmpeg is not accessible:", e)
 
 
-@router.post("/", response_model=Transcription)
+@router.post("/",
+            response_model=Transcription,
+            responses={
+                400: {
+                     "description": "Bad Request. Only '.wav' files are allowed.",
+                     "content": {
+                         "application/json": {
+                             "example": {"detail": "The file must be '.wav'"}
+                         }
+                     }
+                },
+                422: {
+                    "description": "Unprocessable Content.",
+                    "content": {
+                        "application/json": {
+                            "example": {"detail": "Error during transcription"}
+                        }
+                    }
+                },
+                500: {
+                    "description": "Internal Server Error.",
+                    "content": {
+                        "application/json": {
+                            "example": {"detail": "Whisper is not loaded"}
+                        }
+                    }
+                },
+            },
+        )
 async def transcription_to_text(file: UploadFile):
     if model_status != "loaded":
         raise HTTPException(status_code=500, detail="Whisper is not loaded")
@@ -30,25 +61,25 @@ async def transcription_to_text(file: UploadFile):
     if not file.filename.endswith(".wav"):
         raise HTTPException(status_code=400, detail="The file must be '.wav'")
 
-    try:
-        temp_file = os.path.join(target_dir, f"temp_{file.filename}")
-        with open(temp_file, "wb") as f:
-            f.write(file.file.read())
 
-        print(f"TEMPORARY FILE PATH: {temp_file}")
-        print(f"File exists: {os.path.exists(temp_file)}")
-        print(f"Current working directory: {os.getcwd()}")
+    try:
+        temp_file = f"temp_{file.filename}"
+        with open(temp_file, "wb") as f:
+            f.write(file.file.read())    
+        
+        try:
+            result = model.transcribe(temp_file)
+            print("Transcription OK.")
+        except RuntimeError as e:
+            print("Transcription failed.")
+            raise HTTPException(status_code=422, detail=f"Error during transcription: {e}")
+        
+        return Transcription(name=file.filename, text=result["text"], timestamp=get_timestamp())
     
-        
-        result = model.transcribe(temp_file)
-        print(result)
-        
-        os.remove(temp_file)
-        
-        return Transcription(name=file.filename, text="result[text]", timestamp=get_timestamp())
-    except FileNotFoundError:
-        # os.remove(temp_file)
-        raise HTTPException(status_code=500, detail="Temporary file was not created.")
-    except Exception as e:
-        os.remove(temp_file)
-        return HTTPException(status_code=500, detail=f"Error: {e}")
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=500, detail=f"File not found: {e}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Validation error: {e}")
+    finally:
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
