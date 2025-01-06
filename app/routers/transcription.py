@@ -25,35 +25,36 @@ except Exception as e:
     print("FFmpeg is not accessible:", e)
 
 
-@router.post("/",
-            response_model=Transcription,
-            responses={
-                400: {
-                     "description": "Bad Request. Only '.wav' files are allowed.",
-                     "content": {
-                         "application/json": {
-                             "example": {"detail": "The file must be '.wav'"}
-                         }
-                     }
-                },
-                422: {
-                    "description": "Unprocessable Entity.",
-                    "content": {
-                        "application/json": {
-                            "example": {"detail": "Error during transcription"}
-                        }
+@router.post(
+    "/",
+    response_model=Transcription,
+    responses={
+        400: {
+                "description": "Bad Request. Only '.wav' files are allowed.",
+                "content": {
+                    "application/json": {
+                        "example": {"detail": "The file must be '.wav'"}
                     }
-                },
-                500: {
-                    "description": "Internal Server Error.",
-                    "content": {
-                        "application/json": {
-                            "example": {"detail": "Whisper is not loaded"}
-                        }
-                    }
-                },
-            },
-        )
+                }
+        },
+        422: {
+            "description": "Unprocessable Entity.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Error during transcription"}
+                }
+            }
+        },
+        500: {
+            "description": "Internal Server Error.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Whisper is not loaded"}
+                }
+            }
+        },
+    },
+)
 async def transcription_to_text(file: UploadFile):
     if model_status != "loaded":
         raise HTTPException(
