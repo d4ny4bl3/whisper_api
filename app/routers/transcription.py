@@ -11,10 +11,12 @@ router = APIRouter()
 
 try:
     model = whisper.load_model("base")
+    error_message = None
     model_status = "loaded"
     print(f"STATUS: {model_status}")
 except Exception as e:
     model = None
+    error_message = str(e)
     model_status = "not loaded"
     print(f"Error: {e}")
 

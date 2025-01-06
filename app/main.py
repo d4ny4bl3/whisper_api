@@ -1,6 +1,5 @@
 from fastapi import FastAPI
-from routers import version, transcription
-from fastapi import UploadFile
+from routers import version, transcription, status
 
 from utils import api_version
 
@@ -14,3 +13,4 @@ app = FastAPI(
 
 app.include_router(version.router, prefix="/version", tags=["Version"])
 app.include_router(transcription.router, prefix="/transcription", tags=["Transcription"])
+app.include_router(status.router, prefix="/status", tags=["Status"])

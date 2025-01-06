@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from datetime import datetime
 
 
 class VersionResponse(BaseModel):
@@ -10,4 +9,9 @@ class VersionResponse(BaseModel):
 class Transcription(BaseModel):
     name: str
     text: str
-    timestamp: datetime
+    timestamp: str
+    
+    
+class Status(BaseModel):
+    status: str
+    timestamp: str
