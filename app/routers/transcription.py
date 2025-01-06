@@ -37,7 +37,7 @@ except Exception as e:
                      }
                 },
                 422: {
-                    "description": "Unprocessable Content.",
+                    "description": "Unprocessable Entity.",
                     "content": {
                         "application/json": {
                             "example": {"detail": "Error during transcription"}
@@ -56,30 +56,59 @@ except Exception as e:
         )
 async def transcription_to_text(file: UploadFile):
     if model_status != "loaded":
-        raise HTTPException(status_code=500, detail="Whisper is not loaded")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Whisper is not loaded",
+                "timestamp": get_timestamp()
+            }
+        )
     
     if not file.filename.endswith(".wav"):
-        raise HTTPException(status_code=400, detail="The file must be '.wav'")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "The file must be '.wav'",
+                "timestamp": get_timestamp()
+            }
+        )
 
 
     try:
         temp_file = f"temp_{file.filename}"
+
         with open(temp_file, "wb") as f:
             f.write(file.file.read())    
         
         try:
             result = model.transcribe(temp_file)
             print("Transcription OK.")
-        except RuntimeError as e:
+        except Exception as e:
             print("Transcription failed.")
-            raise HTTPException(status_code=422, detail=f"Error during transcription: {e}")
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "Error during transcription",
+                    "message": str(e),
+                    "timestamp": get_timestamp()
+                }
+            )
         
-        return Transcription(name=file.filename, text=result["text"], timestamp=get_timestamp())
+        return Transcription(
+            name=file.filename,
+            text=result["text"],
+            timestamp=get_timestamp()
+        )
     
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=f"File not found: {e}")
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=f"Validation error: {e}")
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Validation error",
+                "message": str(e),
+                "timestamp": get_timestamp()
+            }
+        )
     finally:
         if os.path.exists(temp_file):
             os.remove(temp_file)
